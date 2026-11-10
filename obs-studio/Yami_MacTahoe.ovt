@@ -1,0 +1,51 @@
+@OBSThemeMeta {
+    name: 'MacTahoe Mocha';
+    id: 'com.obsproject.Yami.MacTahoe';
+    extends: 'com.obsproject.Yami';
+    author: 'Rice';
+    dark: 'true';
+}
+
+/* Matches MacTahoe-Dark-solid GTK (Catppuccin Mocha, mauve accent) */
+@OBSThemeVars {
+    --grey1: #6c7086;
+    --grey2: #585b70;
+    --grey3: #45475a;
+    --grey4: #3a3c50;
+    --grey5: #313244;
+    --grey6: #1e1e2e;
+    --grey7: #181825;
+    --grey8: #11111b;
+
+    --blue1: #cba6f7;
+    --blue2: #b48ef0;
+    --blue3: #8a5cd6;
+    --blue4: #7149b8;
+    --blue5: #5a3a94;
+    --blue6: #432c6e;
+
+    --red1: #f5a3b9;
+    --red2: #f38ba8;
+    --red3: #d4708d;
+    --red4: #b85d77;
+    --red5: #8f475c;
+    --red6: #5e2f3d;
+
+    --green1: #bdebb9;
+    --green2: #a6e3a1;
+    --green3: #84c47f;
+    --green4: #67a263;
+    --green5: #4b7a48;
+    --green6: #31512f;
+
+    --white1: #cdd6f4;
+    --white2: #bac2de;
+    --white3: #a6adc8;
+    --white4: #9399b2;
+    --white5: #7f849c;
+
+    --text_inactive: #a6adc8;
+    --border_radius: 8px;
+    --border_radius_small: 5px;
+    --border_radius_large: 12px;
+}

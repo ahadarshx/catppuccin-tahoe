@@ -1,0 +1,29 @@
+// Minimal fastfetch: cat on the left, nine compact lines, Catppuccin Mocha
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "kitty-direct",
+    "source": "~/.config/fastfetch/cat.png",
+    "width": 18,
+    "height": 9,
+    "padding": { "top": 1, "left": 1, "right": 3 }
+  },
+  "display": {
+    "separator": "",
+    "color": { "keys": "38;2;203;166;247", "output": "38;2;205;214;244" },
+    "key": { "width": 14 }
+  },
+  "modules": [
+    "break",
+    { "type": "host",     "key": "󰌢  host",     "format": "{family}" },
+    { "type": "os",       "key": "  os",       "format": "{name} {version-id}" },
+    { "type": "command",  "key": "  kernel",   "text": "uname -r | cut -d- -f1" },
+    { "type": "packages", "key": "󰏖  packages", "format": "{all}" },
+    { "type": "terminal", "key": "  terminal", "format": "{pretty-name}" },
+    { "type": "cpu",      "key": "  cpu",      "format": "{name}" },
+    { "type": "gpu",      "key": "󰢮  gpu",      "format": "{name}", "hideType": "integrated" },
+    { "type": "memory",   "key": "󰍛  memory",   "format": "{used} / {total}" },
+    { "type": "uptime",   "key": "󰅐  uptime",   "format": "{?days}{days}d {?}{hours}h {minutes}m" },
+    "break"
+  ]
+}

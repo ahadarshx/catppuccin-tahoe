@@ -1,0 +1,31 @@
+diff --git a/src/uiMusicPill.js b/src/uiMusicPill.js
+index ad6eab5..5e5601f 100644
+--- a/src/uiMusicPill.js
++++ b/src/uiMusicPill.js
+@@ -952,14 +952,14 @@ export const MusicPill = GObject.registerClass(
+                 this._artistScroll.hide();
+             } else if (effectiveHeight < 46 && !this._inPanel) {
+                 this._artistScroll.hide();
+-            } else if (this._inPanel && effectiveHeight < 30) {
++            } else if (this._inPanel) { // rice: top bar always one line
+                 this._artistScroll.hide();
+             } else {
+                 this._artistScroll.show();
+             }
+ 
+-            this._titleScroll.setLabelStyle(`font-size: ${fontSizeTitle}; font-weight: 800; color: ${customTextStr}; margin: 0px; padding: 0px;`);
+-            this._artistScroll.setLabelStyle(`font-size: ${fontSizeArtist}; font-weight: 500; color: ${customTextAlpha}; margin: 0px; padding: 0px;`);
++            this._titleScroll.setLabelStyle(`${this._inPanel ? 'font-size: 10pt; font-weight: 500; ' : `font-size: ${fontSizeTitle}; font-weight: 800; `}color: ${customTextStr}; margin: 0px; padding: 0px;`); // rice: top bar uses the clock's font (10pt, weight 500)
++            this._artistScroll.setLabelStyle(`${this._inPanel ? 'font-size: 10pt; font-weight: 500; ' : `font-size: ${fontSizeArtist}; font-weight: 500; `}color: ${customTextAlpha}; margin: 0px; padding: 0px;`); // rice: top bar uses the clock's font
+ 
+             this._updateTextDisplay();
+ 
+@@ -1519,7 +1519,7 @@ export const MusicPill = GObject.registerClass(
+             let currentHeight = this._inPanel ? this._settings.get_int('panel-pill-height') : this._settings.get_int('pill-height');
+             let effectiveHeight = currentHeight - borderOffset;
+ 
+-            let isSqueezed = (this._inPanel && effectiveHeight < 30) || (!this._inPanel && effectiveHeight < 46);
++            let isSqueezed = this._inPanel || (!this._inPanel && effectiveHeight < 46); // rice: top bar always one line
+             
+             let showArtist = this._settings.get_boolean('show-artist');
+             if (!showArtist) {

@@ -1,0 +1,562 @@
+diff --git a/README.md b/README.md
+index d4faa9b..218a8b1 100644
+--- a/README.md
++++ b/README.md
+@@ -13,6 +13,7 @@ A small, smooth dock for GNOME Shell with magnifying icons and pinned, running,
+ 
+ - Magnifying icons that follow the pointer, without relayout
+ - Pinned and running apps, with running indicators
++- Drag icons to reorder them; drop a running app or an app grid icon on the dock to pin it
+ - Trash and Downloads at the end of the dock; click the Downloads folder to fan out its latest files
+ - Bottom, left or right edge, with optional intellihide
+ - Can replace the overview dash
+diff --git a/lib/appModel.js b/lib/appModel.js
+index a8f75ce..663c7cc 100644
+--- a/lib/appModel.js
++++ b/lib/appModel.js
+@@ -52,6 +52,24 @@ export class AppModel {
+         return this._appFavorites.getFavorites();
+     }
+ 
++    isFavorite(app) {
++        return this._appFavorites.isFavorite(app.get_id());
++    }
++
++    /**
++     * Pin an app at a position, or move it there if it is pinned already.
++     *
++     * @param {Shell.App} app
++     * @param {number} index - position among the favorites
++     */
++    placeFavorite(app, index) {
++        const id = app.get_id();
++        if (this.isFavorite(app))
++            this._appFavorites.moveFavoriteToPos(id, index);
++        else
++            this._appFavorites.addFavoriteAtPos(id, index);
++    }
++
+     /**
+      * Running apps that are not pinned, in a stable order.
+      *
+diff --git a/lib/bounce.js b/lib/bounce.js
+index 21d53f0..7682997 100644
+--- a/lib/bounce.js
++++ b/lib/bounce.js
+@@ -5,10 +5,6 @@ import St from 'gi://St';
+ 
+ const RISE_TIME = 280;   // ms; from rest to the top of a bounce
+ const FALL_TIME = 280;   // ms; and back down
+-// ms; an app that has nothing to show by then is left alone. Some never say
+-// that they have started (AppImages, mostly), and would bounce for ever.
+-const MAX_TIME = 4000;
+-const MAX_BOUNCES = Math.max(1, Math.floor(MAX_TIME / (RISE_TIME + FALL_TIME)));
+ 
+ const bouncing = new WeakSet();
+ 
+@@ -21,12 +17,16 @@ const bouncing = new WeakSet();
+  *
+  * @param {Clutter.Actor} actor
+  * @param {number[]} offset - [x, y] of the top of a bounce, relative to rest
++ * @param {number} maxTime - ms; an app that has nothing to show by then is
++ *     left alone. Some never say that they have started (AppImages, mostly),
++ *     and would bounce for ever. 0 means no bounce at all.
+  * @param {Function} isDone - asked every time the actor lands
+  */
+-export function bounceUntil(actor, [x, y], isDone) {
+-    if (bouncing.has(actor) || !St.Settings.get().enable_animations)
++export function bounceUntil(actor, [x, y], maxTime, isDone) {
++    if (maxTime <= 0 || bouncing.has(actor) || !St.Settings.get().enable_animations)
+         return;
+     bouncing.add(actor);
++    const maxBounces = Math.max(1, Math.floor(maxTime / (RISE_TIME + FALL_TIME)));
+ 
+     // An animation that did not finish was cut short by the actor going
+     // away; there is nothing left to put back then.
+@@ -44,7 +44,7 @@ export function bounceUntil(actor, [x, y], isDone) {
+         duration: FALL_TIME,
+         mode: Clutter.AnimationMode.EASE_IN_QUAD,
+         onStopped: finished => {
+-            if (finished && ++count < MAX_BOUNCES && !isDone())
++            if (finished && ++count < maxBounces && !isDone())
+                 rise();
+             else
+                 bouncing.delete(actor);
+diff --git a/lib/dock.js b/lib/dock.js
+index 3ab1ca3..88094b0 100644
+--- a/lib/dock.js
++++ b/lib/dock.js
+@@ -9,6 +9,7 @@ import St from 'gi://St';
+ 
+ import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
+ import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
++import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
+ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+ import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
+ import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
+@@ -30,12 +31,12 @@ const DOT_GAP = 2;           // space between icon and running dot
+ const EDGE_MARGIN = 8;       // space kept from the screen corner when aligned to start or end
+ const EDGE_SIZE = 1;         // thickness of the screen-edge strip that reveals a hidden dock
+ const LABEL_GAP = 8;         // space between a fully magnified icon and the label
+-const MAGNIFY_RANGE = 2.35;  // pointer distance, in magnified icon sizes, at which magnification fades to zero
+ const FAR = 10000;           // "unbounded" extent for the one-sided clip
+ 
+ const FADE_TIME = 150;       // ms; fade around the overview
+ const SLIDE_TIME = 220;      // ms; auto-hide slide
+ const REVEAL_GRACE = 600;    // ms a revealed dock waits for the pointer before hiding again
++const DRAG_HOLD_TIME = 200;  // ms an icon is held before it starts to drag, as in the app grid
+ const SCROLL_INTERVAL = 150; // ms; minimum time between two window switches by scrolling
+ 
+ const POSITIONS = ['bottom', 'left', 'right'];
+@@ -55,15 +56,25 @@ const BOUNCE_HEIGHT = 0.4;   // how far a launching app's icon jumps, in icon si
+ // Settings that only restyle the dock, only change which icons it holds, or
+ // are simply read when needed. Any key in none of these sets changes the
+ // geometry of the icons and rebuilds them.
+-const STYLE_KEYS = new Set(['dock-opacity', 'corner-radius', 'icon-spacing', 'dock-padding']);
++const STYLE_KEYS = new Set([
++    'dock-opacity', 'dock-color', 'corner-radius', 'icon-spacing', 'dock-padding', 'edge-distance',
++]);
+ const ITEM_KEYS = new Set([
+     'show-apps-button', 'show-apps-at-start', 'show-separator',
+     'show-running-dots', 'running-apps-order',
+     'show-trash', 'show-downloads', 'show-places-separator',
+ ]);
+ const BLUR_KEYS = new Set(['enable-blur', 'blur-sigma', 'blur-brightness']);
++
++const DEFAULT_COLOR = [22, 22, 26];
++
++/** @returns {number[]} [r, g, b] of a '#rrggbb' string, or the default for anything else */
++function parseColor(text) {
++    const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(text.trim());
++    return match ? match.slice(1).map(hex => parseInt(hex, 16)) : DEFAULT_COLOR;
++}
+ const LIVE_KEYS = new Set([
+-    'hide-delay', 'show-delay', 'click-action', 'scroll-to-switch', 'stacks-fan-view',
++    'hide-delay', 'show-delay', 'click-action', 'scroll-to-switch', 'stacks-fan-view', 'bounce-time',
+ ]);
+ 
+ /**
+@@ -111,6 +122,7 @@ export class Dock {
+         // Places: the downloads folder and the trash, at the end of the dock.
+         this._downloads = null;
+         this._trash = null;
++        this._dragItem = null;
+         this._openMenu = null;
+         this._stack = null;
+         this._emptyTrashDialog = null;
+@@ -142,7 +154,7 @@ export class Dock {
+                 this._applyBlur();
+             else if (ITEM_KEYS.has(key))
+                 this._syncItems();
+-            else if (key === 'alignment')
++            else if (key === 'alignment' || key === 'window-gap')
+                 this._reposition();
+             else if (key === 'intellihide')
+                 this._applyIntellihide();
+@@ -187,6 +199,11 @@ export class Dock {
+         this._edge.destroy();
+         this._edge = null;
+ 
++        if (!this._intellihide)
++            Main.layoutManager.removeChrome(this._strut);
++        this._strut.destroy();
++        this._strut = null;
++
+         Main.layoutManager.removeChrome(this._container);
+         this._container.destroy();
+         this._container = null;
+@@ -283,6 +300,8 @@ export class Dock {
+             track_hover: true,
+         });
+         this._container.add_child(this._content);
++        // Drag and drop asks the actors under the pointer, walking up to here.
++        this._container._delegate = this;
+ 
+         // Pointer events only record where the pointer is; the magnifier
+         // does its work once per frame.
+@@ -323,6 +342,13 @@ export class Dock {
+         // the pointer pushes against to bring the dock back.
+         this._edge = new Clutter.Actor({reactive: true, visible: false});
+         Main.layoutManager.addChrome(this._edge);
++
++        // The space reserved for an always-shown dock: its footprint plus the
++        // window gap, from the screen edge. It draws nothing and is never
++        // picked, so it only keeps maximized windows clear of the dock.
++        this._strut = new Clutter.Actor({reactive: false});
++        // It lies over the dock, and drag and drop picks actors whether reactive or not.
++        Shell.util_set_hidden_from_pick(this._strut, true);
+         this._edge.connect('enter-event', () => this._onEdgeEntered());
+         this._edge.connect('leave-event', () => this._clearTimer('_showTimerId'));
+     }
+@@ -354,7 +380,7 @@ export class Dock {
+         this._magnifier.configure({
+             vertical: this._vertical,
+             restScale: this._restScale,
+-            range: this._iconMax * MAGNIFY_RANGE * this._themeContext.scale_factor,
++            range: this._iconMax * this._settings.get_double('magnify-range') * this._themeContext.scale_factor,
+             iconSize: this._iconSize * this._themeContext.scale_factor,
+         });
+ 
+@@ -390,9 +416,15 @@ export class Dock {
+             padding = [far, ends, near, ends];
+         }
+ 
++        const [red, green, blue] = parseColor(this._settings.get_string('dock-color'));
+         this._background.set_style(
+-            `background-color: rgba(22, 22, 26, ${opacity.toFixed(2)});` +
++            `background-color: rgba(${red}, ${green}, ${blue}, ${opacity.toFixed(2)});` +
+             `border-radius: ${this._cornerRadius}px;`);
++
++        // The invisible container touches the screen edge (for the strut);
++        // its padding on that side is the gap the dock floats at.
++        const edge = this._settings.get_int('edge-distance');
++        this._container.set_style(`padding-${this._settings.get_string('position')}: ${edge}px;`);
+         this._dock.set_style(
+             `padding: ${padding.map(value => `${value}px`).join(' ')};` +
+             `spacing: ${this._settings.get_int('icon-spacing')}px;`);
+@@ -524,10 +556,7 @@ export class Dock {
+                 entry.actor.destroy();
+             }
+ 
+-            this._items = this._entries.filter(({item}) => item).map(({item}) => item);
+-            this._magnifier.setItems(
+-                this._items,
+-                this._entries.filter(({item}) => !item).map(({actor}) => actor));
++            this._publishItems();
+             this._reposition();
+         }
+ 
+@@ -546,6 +575,13 @@ export class Dock {
+         }
+     }
+ 
++    _publishItems() {
++        this._items = this._entries.filter(({item}) => item).map(({item}) => item);
++        this._magnifier.setItems(
++            this._items,
++            this._entries.filter(({item}) => !item).map(({actor}) => actor));
++    }
++
+     _createEntry(key, app) {
+         if (key === SEPARATOR_KEY || key === PLACES_SEPARATOR_KEY)
+             return {key, actor: new St.Widget({style_class: 'glidedock-separator'})};
+@@ -654,6 +690,8 @@ export class Dock {
+ 
+         const item = {app, name, button, slot, icon, dot, scale: this._restScale};
+         button.connect('clicked', (_button, mouseButton) => activate(mouseButton));
++        if (app)
++            this._makeDraggable(item);
+         if (scroll)
+             button.connect('scroll-event', (_button, event) => scroll(event));
+         button.connect('notify::hover', () => {
+@@ -665,6 +703,107 @@ export class Dock {
+         return item;
+     }
+ 
++    _makeDraggable(item) {
++        item.getDragActor = () => item.app.create_icon_texture(this._iconSize);
++        item.getDragActorSource = () => item.button;
++        item.button._delegate = item;
++
++        const draggable = DND.makeDraggable(item.button, {timeoutThreshold: DRAG_HOLD_TIME});
++        draggable.connect('drag-begin', () => this._onDragBegin(item));
++        draggable.connect('drag-end', (_draggable, _time, accepted) =>
++            this._onDragEnd(item, accepted));
++    }
++
++    _onDragBegin(item) {
++        this._dragItem = item;
++        this._hideLabel();
++        // Motion events stop during a drag, so rest the icons: the drop
++        // position is worked out from their resting slots.
++        this._magnifier.setPointer(null);
++        // The icon travels with the pointer; this gap shows where it would land.
++        item.slot.opacity = 0;
++    }
++
++    _onDragEnd(item, accepted) {
++        this._dragItem = null;
++        if (this._entries.some(entry => entry.item === item))
++            item.slot.opacity = 255;
++        // Without a drop, put back what the preview moved.
++        if (!accepted) {
++            this._layoutKey = null;
++            this._syncItems();
++        }
++        this._updateVisibility();
++    }
++
++    _pinnedEntries() {
++        const pinned = new Set(this._model.favorites.map(app => app.get_id()));
++        return this._entries.filter(({key}) => pinned.has(key));
++    }
++
++    /**
++     * Where a drop at the pointer would land among the pinned apps. Slots are
++     * all one size, so this does not change as the preview moves icons around.
++     *
++     * @param {object} source - the dragged item or app icon
++     * @returns {number} index into the favorites
++     */
++    _dropIndex(source) {
++        const pinned = this._pinnedEntries();
++        if (pinned.length === 0)
++            return 0;
++
++        const along = actor => {
++            const [x, y] = actor.get_transformed_position();
++            return this._vertical ? y : x;
++        };
++        const [pointerX, pointerY] = global.get_pointer();
++        const pointer = this._vertical ? pointerY : pointerX;
++        const first = pinned[0].actor;
++        const start = along(first);
++        const pitch = pinned.length > 1
++            ? (along(pinned[pinned.length - 1].actor) - start) / (pinned.length - 1)
++            : this._vertical ? first.height : first.width;
++        const slot = (pointer - start) / pitch;
++
++        // A pinned app takes over a slot; anything else goes between two.
++        return this._model.isFavorite(source.app)
++            ? Math.min(Math.max(Math.floor(slot), 0), pinned.length - 1)
++            : Math.min(Math.max(Math.round(slot), 0), pinned.length);
++    }
++
++    _previewDrop(item, index) {
++        const pinned = this._pinnedEntries();
++        const from = pinned.findIndex(entry => entry.item === item);
++        if (from < 0 || from === index)
++            return;
++
++        const offset = this._entries.indexOf(pinned[0]);
++        const [entry] = this._entries.splice(offset + from, 1);
++        this._entries.splice(offset + index, 0, entry);
++        this._dock.set_child_at_index(entry.actor, offset + index);
++        this._publishItems();
++    }
++
++    _canDrop(source) {
++        return !!source?.app && !source.app.is_window_backed();
++    }
++
++    handleDragOver(source, _actor, _x, _y, _time) {
++        if (!this._canDrop(source))
++            return DND.DragMotionResult.CONTINUE;
++        if (source === this._dragItem)
++            this._previewDrop(source, this._dropIndex(source));
++        return DND.DragMotionResult.MOVE_DROP;
++    }
++
++    acceptDrop(source, _actor, _x, _y, _time) {
++        if (!this._canDrop(source))
++            return false;
++        this._model.placeFavorite(source.app, this._dropIndex(source));
++        return true;
++    }
++
+     _activateApp(app, mouseButton) {
+         // From the overview a click always means "take me to this app".
+         const inOverview = Main.overview.visible;
+@@ -697,7 +836,7 @@ export class Dock {
+         const height = Math.round(this._iconSize * BOUNCE_HEIGHT) * this._themeContext.scale_factor;
+         const offset = {left: [height, 0], right: [-height, 0]}[this._position] ?? [0, -height];
+         const serial = this._windowSerial;
+-        bounceUntil(item.icon, offset, () =>
++        bounceUntil(item.icon, offset, this._settings.get_int('bounce-time'), () =>
+             app.state === Shell.AppState.RUNNING || this._windowSerial !== serial);
+     }
+ 
+@@ -1066,6 +1205,17 @@ export class Dock {
+         this._overlap?.setRect(this._dockRect);
+         this._syncDashSpace();
+ 
++        // Reserved space: the dock's footprint, grown by the gap towards the
++        // middle of the screen. It has to start at the screen edge to count.
++        const gap = this._settings.get_int('window-gap') * sf;
++        if (this._position === 'left')
++            this._strut.set_position(x, y);
++        else if (this._position === 'right')
++            this._strut.set_position(x - gap, y);
++        else
++            this._strut.set_position(x, y - gap);
++        this._strut.set_size(width + (this._vertical ? gap : 0), height + (this._vertical ? 0 : gap));
++
+         // The reveal strip hugs the screen edge along the dock's length.
+         const edge = EDGE_SIZE * sf;
+         if (this._position === 'left') {
+@@ -1184,13 +1334,17 @@ export class Dock {
+         const enabled = this._settings.get_boolean('intellihide');
+         if (this._chromeAdded && enabled === this._intellihide)
+             return;
++        const strutAdded = this._chromeAdded && !this._intellihide;
+         this._intellihide = enabled;
+ 
+-        // Only a dock that is always there may reserve space, and that can
+-        // only be chosen when the actor is added.
+-        if (this._chromeAdded)
+-            Main.layoutManager.removeChrome(this._container);
+-        Main.layoutManager.addChrome(this._container, {affectsStruts: !enabled});
++        // Only a dock that is always there reserves space, through the strut
++        // actor; the dock itself never does, so the gap can be added to it.
++        if (!this._chromeAdded)
++            Main.layoutManager.addChrome(this._container, {affectsStruts: false});
++        if (strutAdded)
++            Main.layoutManager.removeChrome(this._strut);
++        if (!enabled)
++            Main.layoutManager.addChrome(this._strut, {affectsStruts: true});
+         this._chromeAdded = true;
+         Main.layoutManager.uiGroup.set_child_above_sibling(this._label, null);
+ 
+@@ -1206,7 +1360,8 @@ export class Dock {
+ 
+     _wantHidden() {
+         return !!this._overlap?.overlapped && !this._inOverview &&
+-            !this._revealed && !this._container.hover && !this._openMenu && !this._stack;
++            !this._revealed && !this._container.hover && !this._openMenu && !this._stack &&
++            !this._dragItem;
+     }
+ 
+     _updateVisibility() {
+@@ -1328,6 +1483,8 @@ export class Dock {
+     _syncVisible() {
+         const fullscreen = this._isFullscreen();
+         this._container.visible = !fullscreen && (!this._dockHidden || this._sliding);
++        // A fullscreen window gets the whole screen, as before.
++        this._strut.visible = !fullscreen;
+         this._edge.visible = this._dockHidden && !this._sliding &&
+             !fullscreen && !this._inOverview;
+         if (!this._container.visible) {
+diff --git a/prefs.js b/prefs.js
+index f73cb9a..ad72a3e 100644
+--- a/prefs.js
++++ b/prefs.js
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0-or-later
+ 
+ import Adw from 'gi://Adw';
++import Gdk from 'gi://Gdk';
+ import Gio from 'gi://Gio';
+ import GLib from 'gi://GLib';
+ import GObject from 'gi://GObject';
+@@ -86,6 +87,40 @@ class RowBuilder {
+         return row;
+     }
+ 
++    /** A colour button over a '#rrggbb' string key. */
++    color(group, key, title, subtitle) {
++        const settings = this._settings;
++        const button = new Gtk.ColorDialogButton({
++            dialog: new Gtk.ColorDialog({with_alpha: false}),
++            valign: Gtk.Align.CENTER,
++        });
++        const row = new Adw.ActionRow({title, subtitle, use_markup: false});
++        row.add_suffix(button);
++        row.activatable_widget = button;
++
++        const toHex = rgba => '#' + [rgba.red, rgba.green, rgba.blue]
++            .map(channel => Math.round(channel * 255).toString(16).padStart(2, '0')).join('');
++        const sync = () => {
++            const rgba = new Gdk.RGBA();
++            if (rgba.parse(settings.get_string(key)) && toHex(button.rgba) !== toHex(rgba))
++                button.rgba = rgba;
++        };
++        sync();
++        button.connect('notify::rgba', () => {
++            const value = toHex(button.rgba);
++            if (settings.get_string(key) !== value)
++                settings.set_string(key, value);
++        });
++        const changedId = settings.connect(`changed::${key}`, sync);
++        this._window.connect('close-request', () => {
++            settings.disconnect(changedId);
++            return false;
++        });
++
++        group.add(row);
++        return row;
++    }
++
+     /** Makes rows usable only while a switch row is on. */
+     dependOn(switchRow, ...rows) {
+         for (const row of rows)
+@@ -121,6 +156,10 @@ export default class GlideDockPreferences extends ExtensionPreferences {
+                 ['start', _('Start')],
+                 ['end', _('End')],
+             ]);
++        rows.spin(placement, 'edge-distance',
++            _('Distance from edge'), _('Gap between the dock and the screen edge, in pixels'), [0, 64, 1]);
++        rows.spin(placement, 'window-gap',
++            _('Window gap'), _('Space between maximized windows and the dock, in pixels; not used with Intellihide'), [0, 48, 1]);
+ 
+         rows.switch(placement, 'show-in-overview',
+             _('Show in the overview'), _('Keep the dock in the overview in place of the built-in dash'));
+@@ -192,6 +231,12 @@ export default class GlideDockPreferences extends ExtensionPreferences {
+             ]);
+         rows.switch(actions, 'scroll-to-switch',
+             _('Scroll to switch windows'), _('Scrolling over an app icon steps through its windows'));
++
++        const launching = rows.group(_('Launching'));
++        rows.spin(launching, 'bounce-time',
++            _('Bounce limit'),
++            _('Longest a launching icon bounces, in milliseconds, for apps that never report they started; 0 turns it off'),
++            [0, 10000, 250]);
+     }
+ 
+     _addAppearancePage(rows) {
+@@ -200,10 +245,15 @@ export default class GlideDockPreferences extends ExtensionPreferences {
+         const magnification = rows.group(_('Magnification'));
+         const magnify = rows.switch(magnification, 'enable-magnification',
+             _('Magnify on hover'), _('Icons near the pointer grow'));
+-        rows.dependOn(magnify, rows.spin(magnification, 'max-scale',
+-            _('Maximum scale'), _('Size of the icon under the pointer, relative to its size at rest'), [1, 2, 0.05], 2));
++        rows.dependOn(magnify,
++            rows.spin(magnification, 'max-scale',
++                _('Maximum scale'), _('Size of the icon under the pointer, relative to its size at rest'), [1, 2, 0.05], 2),
++            rows.spin(magnification, 'magnify-range',
++                _('Spread'), _('How many neighbouring icons grow with it; higher is a wider wave'), [1, 4, 0.05], 2));
+ 
+         const background = rows.group(_('Background & Blur'));
++        rows.color(background, 'dock-color',
++            _('Background colour'), _('Transparency comes from the opacity below'));
+         rows.spin(background, 'dock-opacity',
+             _('Background opacity'), _('0 is fully transparent, 1 is opaque'), [0, 1, 0.05], 2);
+         rows.spin(background, 'corner-radius',
+diff --git a/schemas/org.gnome.shell.extensions.glidedock.gschema.xml b/schemas/org.gnome.shell.extensions.glidedock.gschema.xml
+index 66856e4..f525771 100644
+--- a/schemas/org.gnome.shell.extensions.glidedock.gschema.xml
++++ b/schemas/org.gnome.shell.extensions.glidedock.gschema.xml
+@@ -166,5 +166,34 @@
+       <summary>Fan out the downloads folder</summary>
+       <description>Whether clicking the downloads folder fans its latest files out of the icon instead of opening the folder.</description>
+     </key>
++    <key name="edge-distance" type="i">
++      <range min="0" max="64"/>
++      <default>8</default>
++      <summary>Distance from the screen edge</summary>
++      <description>Gap between the dock and the screen edge it is attached to, in pixels.</description>
++    </key>
++    <key name="window-gap" type="i">
++      <range min="0" max="48"/>
++      <default>8</default>
++      <summary>Gap above maximized windows</summary>
++      <description>Space kept between maximized windows and the dock, in pixels. Only used while the dock does not auto-hide.</description>
++    </key>
++    <key name="magnify-range" type="d">
++      <range min="1.0" max="4.0"/>
++      <default>2.35</default>
++      <summary>Magnification spread</summary>
++      <description>How far magnification reaches from the pointer, in magnified icon sizes. Higher makes more neighbouring icons grow.</description>
++    </key>
++    <key name="bounce-time" type="i">
++      <range min="0" max="10000"/>
++      <default>2500</default>
++      <summary>Launch bounce limit</summary>
++      <description>Longest time, in milliseconds, a launching app's icon bounces when the app never reports that it has started. 0 turns the bounce off.</description>
++    </key>
++    <key name="dock-color" type="s">
++      <default>'#16161a'</default>
++      <summary>Dock background colour</summary>
++      <description>Colour of the dock background as #rrggbb; its transparency comes from the background opacity.</description>
++    </key>
+   </schema>
+ </schemalist>

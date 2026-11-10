@@ -1,0 +1,38 @@
+{
+  // --- Catppuccin Mocha, matched to the MacTahoe-Dark-solid GTK theme ---
+  "workbench.colorTheme": "Catppuccin Mocha",
+  "workbench.iconTheme": "catppuccin-mocha",
+  "catppuccin.accentColor": "mauve",
+  "catppuccin.colorOverrides": {
+    "mocha": {
+      "base": "#11111b",     // editor = GTK app background (crust)
+      "mantle": "#181825",   // sidebar / panels = GTK sidebars
+      "crust": "#11111b"     // title bar / activity bar = GTK titlebars
+    }
+  },
+
+  // --- macOS-like window chrome ---
+  "window.titleBarStyle": "custom",
+  "window.controlsStyle": "custom",
+  // traffic lights: CSS injected by the "Custom UI Style" extension
+  "custom-ui-style.external.imports": [
+    "file:///home/YOUR_USER/rice/vscode/traffic-lights.css"
+  ],
+  "window.commandCenter": true,
+  "window.menuBarVisibility": "compact",
+  "workbench.layoutControl.enabled": true,
+
+  // --- macOS feel ---
+  "editor.smoothScrolling": true,
+  "workbench.list.smoothScrolling": true,
+  "terminal.integrated.smoothScrolling": true,
+  "editor.cursorBlinking": "smooth",
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.cursorStyle": "line",
+
+  // --- Fonts ---
+  "editor.fontFamily": "'Cascadia Code NF', monospace",
+  "editor.fontLigatures": true,
+  "terminal.integrated.fontFamily": "'Cascadia Code NF'",
+  "terminal.integrated.cursorStyle": "line"
+}

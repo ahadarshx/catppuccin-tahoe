@@ -1,0 +1,26 @@
+# Catppuccin Mocha, matched to the MacTahoe-Dark-solid GTK theme
+theme = Catppuccin Mocha
+
+# Window / workspace: crust (#11111b) like the GTK app and titlebar backgrounds
+background = #11111b
+background-opacity = 1
+window-theme = ghostty
+split-divider-color = #313244
+unfocused-split-fill = #11111b
+
+# Accent (mauve) for the cursor and selection
+cursor-color = #cba6f7
+cursor-text = #11111b
+selection-background = #45475a
+selection-foreground = #cdd6f4
+
+# I-beam cursor
+cursor-style = bar
+
+# Padding on every side
+window-padding-x = 14
+window-padding-y = 12
+window-padding-balance = true
+
+# Nerd Font (Cascadia Code with Nerd Font glyphs)
+font-family = "Cascadia Code NF"

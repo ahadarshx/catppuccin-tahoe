@@ -1,0 +1,24 @@
+# cava - Catppuccin Mocha (mauve -> pink -> peach)
+
+[general]
+framerate = 60
+bars = 0
+bar_width = 2
+bar_spacing = 1
+sleep_timer = 10
+
+[output]
+method = noncurses
+orientation = bottom
+
+[color]
+# background stays the terminal's (#11111b in Ghostty)
+gradient = 1
+gradient_count = 3
+gradient_color_1 = '#cba6f7'
+gradient_color_2 = '#f5c2e7'
+gradient_color_3 = '#fab387'
+
+[smoothing]
+noise_reduction = 77
+monstercat = 1

@@ -1,0 +1,56 @@
+# Catppuccin Mocha matched to the MacTahoe-Dark-solid GTK theme:
+# crust background, mantle footer, mauve accent.
+
+[meta]
+version = 1
+name = "Catppuccin Tahoe"
+description = "Catppuccin Mocha on crust with a mauve accent, matching the GNOME theme."
+variant = "dark"
+inherits = "catppuccin-mocha"
+
+[colors.core]
+background = "#11111B"            # crust (app background)
+foreground = "#CDD6F4"            # text
+secondary_background = "#181825"  # mantle
+border = "#313244"                # surface0
+accent = "#CBA6F7"                # mauve
+accent_foreground = "#11111B"
+
+[colors.accents]
+blue = "#89B4FA"
+green = "#A6E3A1"
+magenta = "#F5C2E7"
+orange = "#FAB387"
+purple = "#CBA6F7"
+red = "#F38BA8"
+yellow = "#F9E2AF"
+cyan = "#94E2D5"
+
+[colors.main_window]
+border = "#313244"
+
+[colors.text]
+muted = "#A6ADC8"                 # subtext0
+placeholder = "#6C7086"           # overlay0
+danger = "#F38BA8"
+success = "#A6E3A1"
+selection = { background = "#CBA6F7", foreground = "#11111B" }
+
+[colors.text.links]
+default = "#CBA6F7"
+visited = "#B4BEFE"
+
+[colors.input]
+border = "#313244"
+border_focus = "#CBA6F7"
+border_error = "#F38BA8"
+
+[colors.list.item.hover]
+background = "#1E1E2E"            # base
+
+[colors.list.item.selection]
+background = "#313244"            # surface0
+secondary_background = "#45475A"  # surface1
+
+[colors.grid.item]
+background = "#1E1E2E"

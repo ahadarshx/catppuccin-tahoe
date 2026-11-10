@@ -1,0 +1,47 @@
+# ~/.zshrc - oh-my-zsh + minimal prompt, Catppuccin Mocha
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# --- oh-my-zsh -------------------------------------------------------------
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME=""                      # custom prompt at the bottom
+plugins=(git sudo zsh-autosuggestions zsh-syntax-highlighting)
+
+# Catppuccin colors for syntax highlighting (must load before the plugin)
+source "$HOME/.config/zsh/catppuccin_mocha-zsh-syntax-highlighting.zsh"
+
+source "$ZSH/oh-my-zsh.sh"
+
+# Aliases (see ~/rice/README.md)
+[[ -r "$HOME/.config/zsh/aliases.zsh" ]] && source "$HOME/.config/zsh/aliases.zsh"
+
+# Autosuggestions in a muted Catppuccin gray
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=#6c7086"
+
+# --- history -----------------------------------------------------------------
+HISTSIZE=50000
+SAVEHIST=50000
+setopt HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE SHARE_HISTORY
+
+# --- fastfetch: once per Ghostty launch (first window only) ----------------
+if [[ -o interactive && "$TERM" == xterm-ghostty ]] && (( $+commands[fastfetch] )); then
+  _ff_mark="${XDG_RUNTIME_DIR:-/tmp}/fastfetch-ghostty-$PPID"
+  if [[ ! -e $_ff_mark ]]; then
+    : >| $_ff_mark
+    fastfetch
+  fi
+  unset _ff_mark
+fi
+
+# --- prompt ------------------------------------------------------------------
+# left:  ➜ folder        (arrow is mauve, red after a failed command)
+# right: branch  HH:MM   (muted)
+autoload -Uz vcs_info
+zstyle ':vcs_info:git:*' formats '%b  '
+zstyle ':vcs_info:*' enable git
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd vcs_info
+setopt PROMPT_SUBST
+
+PROMPT='%(?.%F{#cba6f7}.%F{#f38ba8})➜%f %F{#cdd6f4}%1~%f '
+RPROMPT='%F{#6c7086}${vcs_info_msg_0_}%D{%H:%M}%f'

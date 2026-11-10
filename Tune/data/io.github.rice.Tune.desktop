@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Tune
+GenericName=Music Player
+Comment=Listen to Spotify
+Exec=tune
+Icon=io.github.rice.Tune
+Terminal=false
+Type=Application
+Categories=Audio;AudioVideo;Music;Player;GTK;GNOME;
+Keywords=Spotify;Music;Player;
+StartupNotify=true
+StartupWMClass=io.github.rice.Tune
+SingleMainWindow=true

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a678ff"/>
+      <stop offset="1" stop-color="#5a2fd6"/>
+    </linearGradient>
+    <mask id="cut">
+      <rect width="64" height="64" fill="#fff"/>
+      <path d="M28.5 26v12L38.5 32z" fill="#000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
+    </mask>
+    <linearGradient id="rim" x1="6.745" x2="10.583" y1="1.058" y2="11.312" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rim2" x1="15.081" x2="12.7" y1="14.816" y2="12.171" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft" width="1.024" height="1.024" x="-.012" y="-.012" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation=".074"/>
+    </filter>
+    <filter id="shadow" width="1.5" height="1.5" x="-.25" y="-.25" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="1.6"/>
+    </filter>
+  </defs>
+  <path transform="scale(3.7795)" d="M5.36 1.058c-1.53 0-2.577.457-3.26 1.2-.678.74-1.042 1.8-1.042 3v6.416c0 1.2.364 2.261 1.042 3.001.683.744 1.73 1.2 3.26 1.2h6.23c1.53 0 2.579-.456 3.26-1.2.68-.74 1.025-1.703 1.025-3V5.5c0-1.57-.345-2.502-1.024-3.242-.682-.743-1.73-1.2-3.26-1.2H6.745z" fill="url(#bg)"/>
+  <g transform="scale(3.7795)">
+    <g filter="url(#soft)" opacity=".45">
+      <path fill="url(#rim)" fill-rule="evenodd" d="M5.36 1.058c-1.53 0-2.577.457-3.26 1.2-.678.74-1.042 1.8-1.042 3.001v6.415c0 1.2.364 2.26 1.043 3 .682.744 1.73 1.2 3.26 1.2h6.23c1.53 0 2.577-.456 3.26-1.2.678-.739 1.024-1.702 1.024-3V5.5c0-1.57-.346-2.502-1.024-3.242-.683-.743-1.73-1.2-3.26-1.2H6.745zm0 .264h6.232c1.477 0 2.437.432 3.064 1.116.634.69.954 1.53.954 3.062v6.174c0 1.251-.322 2.134-.954 2.822-.627.684-1.587 1.114-3.064 1.114H5.359c-1.477 0-2.437-.43-3.064-1.114-.625-.682-.973-1.675-.973-2.822V5.26c0-1.148.348-2.14.973-2.822.627-.684 1.587-1.116 3.064-1.116"/>
+      <path fill="url(#rim2)" fill-rule="evenodd" d="M5.36 1.058c-1.53 0-2.577.457-3.26 1.2-.678.74-1.042 1.8-1.042 3.001v6.415c0 1.2.364 2.26 1.043 3 .682.744 1.73 1.2 3.26 1.2h6.23c1.53 0 2.577-.456 3.26-1.2.678-.739 1.024-1.702 1.024-3V5.5c0-1.57-.346-2.502-1.024-3.242-.683-.743-1.73-1.2-3.26-1.2H6.745zm0 .264h6.232c1.477 0 2.437.432 3.064 1.116.634.69.954 1.53.954 3.062v6.174c0 1.251-.322 2.134-.954 2.822-.627.684-1.587 1.114-3.064 1.114H5.359c-1.477 0-2.437-.43-3.064-1.114-.625-.682-.973-1.675-.973-2.822V5.26c0-1.148.348-2.14.973-2.822.627-.684 1.587-1.116 3.064-1.116"/>
+    </g>
+  </g>
+  <g fill="#2b0870" opacity=".24" filter="url(#shadow)" mask="url(#cut)" transform="translate(0 1.5)"><rect x="17" y="17" width="30" height="30" rx="5" transform="rotate(45 32 32)"/></g>
+  <g mask="url(#cut)">
+    <rect x="17" y="17" width="30" height="30" rx="5" transform="rotate(45 32 32)" fill="#fff"/>
+  </g>
+</svg>

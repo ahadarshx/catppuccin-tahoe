@@ -10,7 +10,9 @@ Recoloured MacTahoe, a glide dock, a music pill and a matching terminal.
 <img alt="Terminal: Ghostty + zsh" src="https://img.shields.io/badge/Terminal-Ghostty%20%2B%20zsh-a6e3a1?style=flat-square&labelColor=313244&logo=ghostty&logoColor=cdd6f4"> <img alt="Font: Adwaita Sans · Cascadia Code NF" src="https://img.shields.io/badge/Font-Adwaita%20Sans%20%C2%B7%20Cascadia%20Code%20NF-a6e3a1?style=flat-square&labelColor=313244"> <img alt="Music: Tune (GTK4 Spotify)" src="https://img.shields.io/badge/Music-Tune%20%28GTK4%20Spotify%29-a6e3a1?style=flat-square&labelColor=313244&logo=spotify&logoColor=cdd6f4"><br>
 <img alt="Themed: Zen · VS Code · OBS" src="https://img.shields.io/badge/Themed-Zen%20%C2%B7%20VS%20Code%20%C2%B7%20OBS-fab387?style=flat-square&labelColor=313244"><br>
 
-<!-- ![desktop](screenshots/desktop.png) -->
+![fetch](screenshots/fetch.png)
+
+<img src="screenshots/cava.png" width="49%"> <img src="screenshots/launcher.png" width="49%">
 
 </div>
 
